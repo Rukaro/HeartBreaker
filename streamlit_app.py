@@ -348,22 +348,10 @@ def display_game_state():
             card_text += " (K)"
         
         card_class = get_card_css_class(enemy)
-        card_html = f'''
-            <div class="{card_class}">
-                <div class="card-value">{card_text}</div>
-                <div class="card-point">点数: {value}</div>
-            </div>
-        '''
+        card_html = f'<div class="{card_class}"><div class="card-value">{card_text}</div><div class="card-point">点数: {value}</div></div>'
         enemy_cards_html.append(card_html)
     
-    enemy_section_html = f'''
-    <div class="enemy-section">
-        <h2 style="color: #ff6b6b; margin-bottom: 15px; padding-left: 10px; border-left: 4px solid #ff6b6b;">🃏 敌人牌</h2>
-        <div class="cards-container">
-            {''.join(enemy_cards_html)}
-        </div>
-    </div>
-    '''
+    enemy_section_html = f'<div class="enemy-section"><h2 style="color: #ff6b6b; margin-bottom: 15px; padding-left: 10px; border-left: 4px solid #ff6b6b;">🃏 敌人牌</h2><div class="cards-container">{"".join(enemy_cards_html)}</div></div>'
     st.markdown(enemy_section_html, unsafe_allow_html=True)
     
     # 按钮区域 - 放在div外面
@@ -387,22 +375,10 @@ def display_game_state():
             card_text += " (黑桃K)"
         
         card_class = get_card_css_class(card)
-        card_html = f'''
-            <div class="{card_class}">
-                <div class="card-value">{card_text}</div>
-                <div class="card-point">点数: {numeric_value}</div>
-            </div>
-        '''
+        card_html = f'<div class="{card_class}"><div class="card-value">{card_text}</div><div class="card-point">点数: {numeric_value}</div></div>'
         hand_cards_html.append(card_html)
     
-    hand_section_html = f'''
-    <div class="hand-section">
-        <h2 style="color: #4dabf7; margin-bottom: 15px; padding-left: 10px; border-left: 4px solid #4dabf7;">👋 你的手牌</h2>
-        <div class="cards-container">
-            {''.join(hand_cards_html)}
-        </div>
-    </div>
-    '''
+    hand_section_html = f'<div class="hand-section"><h2 style="color: #4dabf7; margin-bottom: 15px; padding-left: 10px; border-left: 4px solid #4dabf7;">👋 你的手牌</h2><div class="cards-container">{"".join(hand_cards_html)}</div></div>'
     st.markdown(hand_section_html, unsafe_allow_html=True)
     
     # 处理攻击选择
@@ -552,23 +528,10 @@ def handle_discard_selection():
         card_text = card_display(card)
         numeric_value = card.get_numeric_value(game.hand)
         card_class = get_card_css_class(card)
-        card_html = f'''
-            <div class="{card_class}">
-                <div class="card-value">{card_text}</div>
-                <div class="card-point">点数: {numeric_value}</div>
-            </div>
-        '''
+        card_html = f'<div class="{card_class}"><div class="card-value">{card_text}</div><div class="card-point">点数: {numeric_value}</div></div>'
         discard_cards_html.append(card_html)
     
-    discard_section_html = f'''
-    <div class="discard-section">
-        <h3 style="color: #ffd43b; margin-bottom: 15px;">🗑️ 选择要丢弃的手牌</h3>
-        <p style="color: #666; margin-bottom: 15px; font-style: italic;">击败敌人后，你需要丢弃一张手牌（不能丢弃黑桃K）</p>
-        <div class="cards-container">
-            {''.join(discard_cards_html)}
-        </div>
-    </div>
-    '''
+    discard_section_html = f'<div class="discard-section"><h3 style="color: #ffd43b; margin-bottom: 15px;">🗑️ 选择要丢弃的手牌</h3><p style="color: #666; margin-bottom: 15px; font-style: italic;">击败敌人后，你需要丢弃一张手牌（不能丢弃黑桃K）</p><div class="cards-container">{"".join(discard_cards_html)}</div></div>'
     st.markdown(discard_section_html, unsafe_allow_html=True)
     
     # 按钮区域 - 放在div外面
