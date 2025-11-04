@@ -51,26 +51,38 @@ st.markdown("""
     
     /* 敌人牌区域 */
     .enemy-section {
-        background: linear-gradient(135deg, #fff5f5 0%, #ffe5e5 100%);
-        padding: 20px;
-        border-radius: 10px;
-        margin-bottom: 20px;
-        border: 2px solid #ff6b6b;
-        display: block;
-        width: 100%;
-        box-sizing: border-box;
+        background: linear-gradient(135deg, #fff5f5 0%, #ffe5e5 100%) !important;
+        padding: 20px !important;
+        border-radius: 10px !important;
+        margin-bottom: 20px !important;
+        border: 2px solid #ff6b6b !important;
+        display: block !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
+        overflow: visible !important;
     }
     
     /* 手牌区域 */
     .hand-section {
-        background: linear-gradient(135deg, #f0f7ff 0%, #e5f0ff 100%);
-        padding: 20px;
-        border-radius: 10px;
-        margin-bottom: 20px;
-        border: 2px solid #4dabf7;
-        display: block;
-        width: 100%;
-        box-sizing: border-box;
+        background: linear-gradient(135deg, #f0f7ff 0%, #e5f0ff 100%) !important;
+        padding: 20px !important;
+        border-radius: 10px !important;
+        margin-bottom: 20px !important;
+        border: 2px solid #4dabf7 !important;
+        display: block !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
+        overflow: visible !important;
+    }
+    
+    /* 卡片容器区域 */
+    .cards-container {
+        display: flex !important;
+        flex-wrap: wrap !important;
+        justify-content: center !important;
+        align-items: flex-start !important;
+        gap: 15px !important;
+        width: 100% !important;
     }
     
     /* 卡片样式 - 固定比例，像真实卡牌 */
@@ -337,11 +349,9 @@ def display_game_state():
         
         card_class = get_card_css_class(enemy)
         card_html = f'''
-        <div style="display: inline-block; margin: 10px; vertical-align: top;">
-            <div class="{card_class}">
-                <div class="card-value">{card_text}</div>
-                <div class="card-point">点数: {value}</div>
-            </div>
+        <div class="{card_class}">
+            <div class="card-value">{card_text}</div>
+            <div class="card-point">点数: {value}</div>
         </div>
         '''
         enemy_cards_html.append(card_html)
@@ -349,7 +359,7 @@ def display_game_state():
     enemy_section_html = f'''
     <div class="enemy-section">
         <h2 style="color: #ff6b6b; margin-bottom: 15px; padding-left: 10px; border-left: 4px solid #ff6b6b;">🃏 敌人牌</h2>
-        <div style="text-align: center; margin-bottom: 15px;">
+        <div class="cards-container">
             {''.join(enemy_cards_html)}
         </div>
     </div>
@@ -378,11 +388,9 @@ def display_game_state():
         
         card_class = get_card_css_class(card)
         card_html = f'''
-        <div style="display: inline-block; margin: 10px; vertical-align: top;">
-            <div class="{card_class}">
-                <div class="card-value">{card_text}</div>
-                <div class="card-point">点数: {numeric_value}</div>
-            </div>
+        <div class="{card_class}">
+            <div class="card-value">{card_text}</div>
+            <div class="card-point">点数: {numeric_value}</div>
         </div>
         '''
         hand_cards_html.append(card_html)
@@ -390,7 +398,7 @@ def display_game_state():
     hand_section_html = f'''
     <div class="hand-section">
         <h2 style="color: #4dabf7; margin-bottom: 15px; padding-left: 10px; border-left: 4px solid #4dabf7;">👋 你的手牌</h2>
-        <div style="text-align: center;">
+        <div class="cards-container">
             {''.join(hand_cards_html)}
         </div>
     </div>
@@ -545,11 +553,9 @@ def handle_discard_selection():
         numeric_value = card.get_numeric_value(game.hand)
         card_class = get_card_css_class(card)
         card_html = f'''
-        <div style="display: inline-block; margin: 10px; vertical-align: top;">
-            <div class="{card_class}">
-                <div class="card-value">{card_text}</div>
-                <div class="card-point">点数: {numeric_value}</div>
-            </div>
+        <div class="{card_class}">
+            <div class="card-value">{card_text}</div>
+            <div class="card-point">点数: {numeric_value}</div>
         </div>
         '''
         discard_cards_html.append(card_html)
@@ -559,7 +565,7 @@ def handle_discard_selection():
     <div class="discard-section">
         <h3 style="color: #ffd43b; margin-bottom: 15px;">🗑️ 选择要丢弃的手牌</h3>
         <p style="color: #666; margin-bottom: 15px; font-style: italic;">击败敌人后，你需要丢弃一张手牌（不能丢弃黑桃K）</p>
-        <div style="text-align: center; margin-bottom: 15px;">
+        <div class="cards-container">
             {''.join(discard_cards_html)}
         </div>
     </div>
