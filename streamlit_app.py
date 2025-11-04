@@ -67,15 +67,22 @@ st.markdown("""
         border: 2px solid #4dabf7;
     }
     
-    /* 卡片样式 */
+    /* 卡片样式 - 固定比例，像真实卡牌 */
     .card-container {
-        background: white;
-        padding: 15px;
-        border-radius: 10px;
+        width: 100px;
+        height: 140px;
+        aspect-ratio: 5 / 7;
+        padding: 10px;
+        border-radius: 8px;
         box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
         text-align: center;
         transition: all 0.3s ease;
         border: 3px solid;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        align-items: center;
+        position: relative;
     }
     
     .card-container:hover {
@@ -83,33 +90,55 @@ st.markdown("""
         box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3);
     }
     
-    .card-enemy {
-        background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%);
+    /* 根据花色设置颜色 */
+    .card-spade {
+        background: linear-gradient(135deg, #2c3e50 0%, #1a252f 100%);
         color: white;
-        border-color: #c92a2a !important;
+        border-color: #0d1117 !important;
     }
     
-    .card-hand {
-        background: linear-gradient(135deg, #4dabf7 0%, #339af0 100%);
+    .card-heart {
+        background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
         color: white;
-        border-color: #1971c2 !important;
+        border-color: #a93226 !important;
     }
     
+    .card-diamond {
+        background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+        color: white;
+        border-color: #a93226 !important;
+    }
+    
+    .card-club {
+        background: linear-gradient(135deg, #2c3e50 0%, #1a252f 100%);
+        color: white;
+        border-color: #0d1117 !important;
+    }
+    
+    .card-joker {
+        background: linear-gradient(135deg, #f39c12 0%, #e67e22 100%);
+        color: #fff;
+        border-color: #d35400 !important;
+    }
+    
+    /* 黑桃K特殊样式 */
     .card-spade-king {
-        background: linear-gradient(135deg, #2b2b2b 0%, #1a1a1a 100%);
+        background: linear-gradient(135deg, #1a1a1a 0%, #000000 100%);
         color: #ffd700;
-        border-color: #000 !important;
+        border-color: #ffd700 !important;
+        border-width: 4px !important;
     }
     
     /* 卡片文字 */
     .card-value {
-        font-size: 1.5em;
+        font-size: 1.8em;
         font-weight: bold;
         margin-bottom: 5px;
+        line-height: 1.2;
     }
     
     .card-point {
-        font-size: 1.1em;
+        font-size: 0.9em;
         opacity: 0.9;
         margin-top: 5px;
     }
@@ -219,6 +248,23 @@ def card_display(card: Card, is_enemy: bool = False) -> str:
         value_str = card.get_value_str()
         return f"{card.suit.value}{value_str}"
 
+def get_card_css_class(card: Card) -> str:
+    """根据花色返回卡片的CSS类名"""
+    if card.is_spade_king():
+        return "card-container card-spade-king"
+    elif card.suit == Suit.SPADE:
+        return "card-container card-spade"
+    elif card.suit == Suit.HEART:
+        return "card-container card-heart"
+    elif card.suit == Suit.DIAMOND:
+        return "card-container card-diamond"
+    elif card.suit == Suit.CLUB:
+        return "card-container card-club"
+    elif card.suit == Suit.JOKER:
+        return "card-container card-joker"
+    else:
+        return "card-container"
+
 def start_new_game():
     """开始新游戏"""
     st.session_state.game = Game()
@@ -276,7 +322,7 @@ def display_game_state():
             if is_king:
                 card_text += " (K)"
             
-            card_class = "card-container card-enemy"
+            card_class = get_card_css_class(enemy)
             card_html = f'''
             <div class="{card_class}">
                 <div class="card-value">{card_text}</div>
@@ -285,7 +331,7 @@ def display_game_state():
             '''
             st.markdown(card_html, unsafe_allow_html=True)
             
-            if st.button(f"攻击敌人 {i+1}", key=f"attack_enemy_{i}", disabled=st.session_state.waiting_for_discard, use_container_width=True):
+            if st.button("攻击敌人", key=f"attack_enemy_{i}", disabled=st.session_state.waiting_for_discard, use_container_width=True):
                 st.session_state.selected_enemy_index = i
                 st.rerun()
     st.markdown('</div>', unsafe_allow_html=True)
@@ -302,11 +348,10 @@ def display_game_state():
             is_spade_k = card.is_spade_king()
             card_text = card_display(card)
             
-            card_class = "card-container card-hand"
             if is_spade_k:
-                card_class = "card-container card-spade-king"
                 card_text += " (黑桃K)"
             
+            card_class = get_card_css_class(card)
             card_html = f'''
             <div class="{card_class}">
                 <div class="card-value">{card_text}</div>
@@ -468,8 +513,9 @@ def handle_discard_selection():
         with discard_cols[idx]:
             card_text = card_display(card)
             numeric_value = card.get_numeric_value(game.hand)
+            card_class = get_card_css_class(card)
             card_html = f'''
-            <div class="card-container card-hand">
+            <div class="{card_class}">
                 <div class="card-value">{card_text}</div>
                 <div class="card-point">点数: {numeric_value}</div>
             </div>
