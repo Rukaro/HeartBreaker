@@ -480,7 +480,7 @@ def display_battle_area():
         battle_right_content = '<div style="text-align: center; color: #999; padding: 20px;">请选择敌人</div>'
     
     # 战斗区完整HTML - 使用完整字符串
-    battle_section_html = f'<div class="battle-section"><div class="battle-left">{battle_left_content}</div><div class="battle-center"></div><div class="battle-right">{battle_right_content}</div>'
+    battle_section_html = f'<div class="battle-section"><div class="battle-left">{battle_left_content}</div><div class="battle-center"></div><div class="battle-right">{battle_right_content}</div></div>'
     st.markdown(battle_section_html, unsafe_allow_html=True)
     
     # 算式输入和攻击按钮 - 放在div外面
@@ -494,7 +494,7 @@ def display_battle_area():
             placeholder="例如: (5 + 3) * 2",
             disabled=battle_enemy_index is None
         )
-        st.markdown('<p style="font-size: 0.85em; color: #666; margin-top: 5px; font-style: italic;">示例: (11 + 5) * 2, 13 - 5 + 3</p></div>', unsafe_allow_html=True)
+        st.markdown('<p style="font-size: 0.85em; color: #666; margin-top: 5px; font-style: italic;">示例: (11 + 5) * 2, 13 - 5 + 3</p>', unsafe_allow_html=True)
     
     with battle_col2:
         if st.button("⚔️\n攻\n击", type="primary", key="battle_attack", use_container_width=True, disabled=st.session_state.waiting_for_discard or battle_enemy_index is None):
