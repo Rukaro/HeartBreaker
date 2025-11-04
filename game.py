@@ -39,11 +39,19 @@ class Game:
         # 洗牌
         random.shuffle(self.deck)
         
-        # 初始化手牌：黑桃K + 4张随机牌
+        # 初始化手牌：黑桃K + 4张随机牌（不能有其他花色的K）
         self.hand = [self.spade_king]
-        for _ in range(4):
-            if len(self.deck) > 0:
-                self.hand.append(self.deck.pop(0))
+        cards_added = 0
+        while cards_added < 4 and len(self.deck) > 0:
+            card = self.deck.pop(0)
+            # 排除其他花色的K（红心K、方块K、梅花K）
+            if card.is_king() and not card.is_spade_king():
+                # 抽到其他花色的K，放回牌堆末尾
+                self.deck.append(card)
+            else:
+                # 不是K的牌，加入手牌
+                self.hand.append(card)
+                cards_added += 1
         
         # 翻开4张牌作为敌人
         self._refresh_enemies()
