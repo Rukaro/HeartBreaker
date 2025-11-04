@@ -372,8 +372,12 @@ def display_game_state():
                 start_new_game()
         return
     
-    # 敌人牌区域 - 使用完整的HTML字符串
-    enemy_cards_html = []
+    # 敌人牌区域 - 标题和卡片
+    enemy_section_html = f'<div class="enemy-section"><h2 style="color: #ff6b6b; margin-bottom: 15px; padding-left: 10px; border-left: 4px solid #ff6b6b;">🃏 敌人牌（点击卡片下方按钮选择）</h2></div>'
+    st.markdown(enemy_section_html, unsafe_allow_html=True)
+    
+    # 敌人牌卡片和按钮
+    enemy_cols = st.columns(4)
     for i, (enemy, value) in enumerate(zip(state['enemies'], enemy_values)):
         is_king = enemy.is_king()
         card_text = card_display(enemy)
@@ -384,16 +388,12 @@ def display_game_state():
         # 如果这个敌人已经在战斗区，添加选中样式
         selected_style = "border: 4px solid #51cf66 !important; box-shadow: 0 0 15px rgba(81, 207, 102, 0.5) !important;" if st.session_state.battle_enemy_index == i else ""
         card_html = f'<div class="{card_class}" style="{selected_style}"><div class="card-value">{card_text}</div><div class="card-point">点数: {value}</div></div>'
-        enemy_cards_html.append(card_html)
-    
-    enemy_section_html = f'<div class="enemy-section"><h2 style="color: #ff6b6b; margin-bottom: 15px; padding-left: 10px; border-left: 4px solid #ff6b6b;">🃏 敌人牌（点击下方按钮选择敌人）</h2><div class="cards-container">{"".join(enemy_cards_html)}</div></div>'
-    st.markdown(enemy_section_html, unsafe_allow_html=True)
-    
-    # 敌人牌选择按钮
-    enemy_cols = st.columns(4)
-    for i, (enemy, value) in enumerate(zip(state['enemies'], enemy_values)):
+        
+        # 在每个列中显示卡片和按钮
         with enemy_cols[i]:
-            button_text = "取消选择" if st.session_state.battle_enemy_index == i else "选择敌人"
+            st.markdown(card_html, unsafe_allow_html=True)
+            # 点击按钮选择敌人
+            button_text = "取消选择" if st.session_state.battle_enemy_index == i else "选择"
             if st.button(button_text, key=f"select_enemy_{i}", disabled=st.session_state.waiting_for_discard, use_container_width=True):
                 if st.session_state.battle_enemy_index == i:
                     st.session_state.battle_enemy_index = None
@@ -405,9 +405,8 @@ def display_game_state():
     
     st.markdown("<br>", unsafe_allow_html=True)
     
-    # 战斗区 - 显示在敌人和手牌之间
-    if st.session_state.battle_enemy_index is not None:
-        display_battle_area()
+    # 战斗区 - 始终显示
+    display_battle_area()
     
     st.markdown("<br>", unsafe_allow_html=True)
     
@@ -448,25 +447,9 @@ def display_game_state():
                     st.write("(黑桃K，不可丢弃)")
 
 def display_battle_area():
-    """显示战斗区"""
-    battle_enemy_index = st.session_state.battle_enemy_index
+    """显示战斗区（始终显示）"""
     game = st.session_state.game
-    
-    if battle_enemy_index < 0 or battle_enemy_index >= len(game.enemies):
-        st.error("无效的敌人索引")
-        st.session_state.battle_enemy_index = None
-        return
-    
-    enemy = game.enemies[battle_enemy_index]
-    target_value = enemy.get_numeric_value(game.enemies)
-    
-    # 战斗区HTML
-    is_king = enemy.is_king()
-    card_text = card_display(enemy)
-    if is_king:
-        card_text += " (K)"
-    card_class = get_card_css_class(enemy)
-    enemy_card_html = f'<div class="{card_class}"><div class="card-value">{card_text}</div><div class="card-point">点数: {target_value}</div></div>'
+    battle_enemy_index = st.session_state.battle_enemy_index
     
     # 显示手牌点数提示
     hand_points = []
@@ -476,32 +459,53 @@ def display_battle_area():
         hand_points.append(f"{card_display(card)}: {numeric_value}" + (" (黑桃K，可用可不用)" if is_spade_k else ""))
     hand_points_text = ", ".join(hand_points)
     
-    # 战斗区布局 - 使用Streamlit容器
-    st.markdown('<div class="battle-section">', unsafe_allow_html=True)
+    # 如果有选中的敌人
+    if battle_enemy_index is not None and battle_enemy_index >= 0 and battle_enemy_index < len(game.enemies):
+        enemy = game.enemies[battle_enemy_index]
+        target_value = enemy.get_numeric_value(game.enemies)
+        
+        # 战斗区HTML - 右侧显示敌人
+        is_king = enemy.is_king()
+        card_text = card_display(enemy)
+        if is_king:
+            card_text += " (K)"
+        card_class = get_card_css_class(enemy)
+        enemy_card_html = f'<div class="{card_class}"><div class="card-value">{card_text}</div><div class="card-point">点数: {target_value}</div></div>'
+        
+        battle_left_content = f'<h3 style="color: #667eea; margin-bottom: 10px;">⚔️ 战斗区</h3><p style="font-size: 0.9em; color: #666; margin-bottom: 10px;"><strong>目标点数:</strong> {target_value}</p><p style="font-size: 0.85em; color: #666; margin-bottom: 15px;"><strong>手牌点数:</strong> {hand_points_text}</p>'
+        battle_right_content = enemy_card_html
+    else:
+        # 没有选中敌人
+        battle_left_content = f'<h3 style="color: #667eea; margin-bottom: 10px;">⚔️ 战斗区</h3><p style="font-size: 0.9em; color: #666; margin-bottom: 10px;"><strong>目标点数:</strong> 请先选择敌人</p><p style="font-size: 0.85em; color: #666; margin-bottom: 15px;"><strong>手牌点数:</strong> {hand_points_text}</p>'
+        battle_right_content = '<div style="text-align: center; color: #999; padding: 20px;">请选择敌人</div>'
     
-    # 战斗区三列布局
+    # 战斗区完整HTML - 使用完整字符串
+    battle_section_html = f'<div class="battle-section"><div class="battle-left">{battle_left_content}</div><div class="battle-center"></div><div class="battle-right">{battle_right_content}</div></div>'
+    st.markdown(battle_section_html, unsafe_allow_html=True)
+    
+    # 算式输入和攻击按钮 - 放在div外面
     battle_col1, battle_col2, battle_col3 = st.columns([2, 1, 1])
     
     with battle_col1:
-        st.markdown(f'<div class="battle-left"><h3 style="color: #667eea; margin-bottom: 10px;">⚔️ 战斗区</h3><p style="font-size: 0.9em; color: #666; margin-bottom: 10px;"><strong>目标点数:</strong> {target_value}</p><p style="font-size: 0.85em; color: #666; margin-bottom: 15px;"><strong>手牌点数:</strong> {hand_points_text}</p></div>', unsafe_allow_html=True)
-        
-        # 算式输入
         expression = st.text_input(
             "输入算式（使用 +、-、*、/ 和括号）",
             value=st.session_state.manual_expression,
             key="battle_expression",
-            placeholder="例如: (5 + 3) * 2"
+            placeholder="例如: (5 + 3) * 2",
+            disabled=battle_enemy_index is None
         )
         st.markdown('<p style="font-size: 0.85em; color: #666; margin-top: 5px; font-style: italic;">示例: (11 + 5) * 2, 13 - 5 + 3</p>', unsafe_allow_html=True)
     
     with battle_col2:
-        st.markdown('<div class="battle-center">', unsafe_allow_html=True)
-        # 攻击按钮
-        if st.button("⚔️\n攻\n击", type="primary", key="battle_attack", use_container_width=True, disabled=st.session_state.waiting_for_discard):
-            if expression:
+        if st.button("⚔️\n攻\n击", type="primary", key="battle_attack", use_container_width=True, disabled=st.session_state.waiting_for_discard or battle_enemy_index is None):
+            if battle_enemy_index is None:
+                st.warning("请先选择敌人")
+            elif expression:
                 # 验证并攻击
                 try:
                     result = eval(expression)
+                    enemy = game.enemies[battle_enemy_index]
+                    target_value = enemy.get_numeric_value(game.enemies)
                     if abs(result - target_value) > 0.0001:
                         st.error(f"计算结果 {result} 不等于目标点数 {target_value}")
                     else:
@@ -546,6 +550,8 @@ def display_battle_area():
                                 st.error(f"使用了不在手牌中的点数: {invalid_values}")
                             else:
                                 # 攻击成功
+                                enemy = game.enemies[battle_enemy_index]
+                                card_text = card_display(enemy)
                                 if game.defeat_enemy(battle_enemy_index, skip_validation=True):
                                     st.success(f"✓ 成功击败敌人 {card_text}！")
                                     st.session_state.battle_enemy_index = None
@@ -559,18 +565,14 @@ def display_battle_area():
                     st.error(f"算式无效: {str(e)}")
             else:
                 st.warning("请输入算式")
-        st.markdown('</div>', unsafe_allow_html=True)
     
     with battle_col3:
-        st.markdown(f'<div class="battle-right">{enemy_card_html}</div>', unsafe_allow_html=True)
-        # 取消按钮
-        if st.button("取消", key="cancel_battle", use_container_width=True):
-            st.session_state.battle_enemy_index = None
-            st.session_state.manual_expression = ""
-            st.session_state.expression_valid = False
-            st.rerun()
-    
-    st.markdown('</div>', unsafe_allow_html=True)
+        if battle_enemy_index is not None:
+            if st.button("取消", key="cancel_battle", use_container_width=True):
+                st.session_state.battle_enemy_index = None
+                st.session_state.manual_expression = ""
+                st.session_state.expression_valid = False
+                st.rerun()
 
 
 def main():
