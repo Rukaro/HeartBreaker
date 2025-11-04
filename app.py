@@ -1,709 +1,320 @@
-import streamlit as st
-import numpy as np
-import random
-import time
+"""
+失心王游戏 - Flask Web应用
+"""
+from flask import Flask, render_template, jsonify, request
+from flask_cors import CORS
+import json
+from game import Game
+from card import Card, Suit
 
-# 设置页面宽度
-st.set_page_config(layout="wide")
+app = Flask(__name__)
+CORS(app)
 
-# 添加CSS样式
-st.markdown("""
-<style>
-.character-card {
-    background-color: #f8f9fa;
-    border: 1px solid #dee2e6;
-    border-radius: 8px;
-    padding: 15px;
-    margin: 5px;
-    min-height: 200px;
-    position: relative;
-    overflow: hidden;
-}
+# 存储游戏实例（简单的单用户实现）
+games = {}
 
-.character-card h3 {
-    margin-top: 0;
-    margin-bottom: 15px;
-    color: #495057;
-    font-size: 16px;
-    text-align: center;
-}
+def card_to_dict(card: Card) -> dict:
+    """将Card对象转换为字典"""
+    return {
+        'suit': card.suit.value if card.suit != Suit.JOKER else 'JOKER',
+        'value': card.value,
+        'is_big_joker': card.is_big_joker if card.suit == Suit.JOKER else False,
+        'display': str(card),
+        'is_spade_king': card.is_spade_king(),
+        'is_king': card.is_king()
+    }
 
-.delete-button {
-    position: absolute;
-    top: 5px;
-    right: 5px;
-    background-color: #dc3545;
-    color: white;
-    border: none;
-    border-radius: 50%;
-    width: 25px;
-    height: 25px;
-    font-size: 14px;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
+@app.route('/')
+def index():
+    """主页"""
+    return render_template('index.html')
 
-.delete-button:hover {
-    background-color: #c82333;
-}
-
-.attribute-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: 8px;
-}
-
-.attribute-label {
-    font-weight: bold;
-    color: #495057;
-    font-size: 14px;
-}
-
-.attribute-value {
-    background-color: #f8f9fa;
-    border: 1px solid #dee2e6;
-    border-radius: 4px;
-    padding: 4px 8px;
-    min-width: 60px;
-    text-align: center;
-    font-size: 14px;
-    color: #495057;
-}
-
-.slider-container {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    margin-bottom: 15px;
-}
-
-.slider-minus {
-    background-color: #6c757d;
-    color: white;
-    border: none;
-    border-radius: 4px;
-    width: 25px;
-    height: 25px;
-    font-size: 14px;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.slider-minus:hover {
-    background-color: #5a6268;
-}
-
-.slider-plus {
-    background-color: #6c757d;
-    color: white;
-    border: none;
-    border-radius: 4px;
-    width: 25px;
-    height: 25px;
-    font-size: 14px;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.slider-plus:hover {
-    background-color: #5a6268;
-}
-
-.slider {
-    flex: 1;
-    height: 6px;
-    border-radius: 3px;
-    background: #e9ecef;
-    outline: none;
-    -webkit-appearance: none;
-}
-
-.slider::-webkit-slider-thumb {
-    -webkit-appearance: none;
-    appearance: none;
-    width: 16px;
-    height: 16px;
-    border-radius: 50%;
-    background: #6c757d;
-    cursor: pointer;
-}
-
-.slider::-moz-range-thumb {
-    width: 16px;
-    height: 16px;
-    border-radius: 50%;
-    background: #6c757d;
-    cursor: pointer;
-    border: none;
-}
-
-.power-display {
-    text-align: center;
-    font-weight: bold;
-    color: #495057;
-    margin-top: 10px;
-    padding: 5px;
-    background-color: #e9ecef;
-    border-radius: 4px;
-}
-
-.empty-slot {
-    background-color: #f8f9fa;
-    border: 2px dashed #dee2e6;
-    border-radius: 8px;
-    padding: 40px 20px;
-    margin: 5px;
-    text-align: center;
-    color: #6c757d;
-    font-size: 32px;
-    min-height: 200px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    transition: background-color 0.2s;
-}
-
-.empty-slot:hover {
-    background-color: #e9ecef;
-}
-
-.section-header {
-    background-color: #e9ecef;
-    border-radius: 6px;
-    padding: 10px 15px;
-    margin: 15px 0;
-    border-left: 4px solid #6c757d;
-}
-
-.section-header h2 {
-    margin: 0;
-    color: #495057;
-    font-size: 18px;
-}
-
-.control-panel {
-    background-color: #f8f9fa;
-    border: 1px solid #dee2e6;
-    border-radius: 8px;
-    padding: 20px;
-    margin: 10px 0;
-    position: sticky;
-    top: 20px;
-    height: fit-content;
-}
-
-.control-panel h3 {
-    margin-top: 0;
-    margin-bottom: 15px;
-    color: #495057;
-    font-size: 16px;
-}
-
-.simulation-input {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    margin-bottom: 20px;
-}
-
-.simulation-input input {
-    flex: 1;
-    border: 1px solid #ced4da;
-    border-radius: 4px;
-    padding: 8px;
-    text-align: center;
-}
-
-.simulation-input button {
-    background-color: #6c757d;
-    color: white;
-    border: none;
-    border-radius: 4px;
-    width: 35px;
-    height: 35px;
-    font-size: 18px;
-    cursor: pointer;
-}
-
-.simulation-input button:hover {
-    background-color: #5a6268;
-}
-
-.battle-button {
-    background-color: #dc3545;
-    color: white;
-    border: none;
-    border-radius: 6px;
-    padding: 12px 24px;
-    font-size: 16px;
-    font-weight: bold;
-    cursor: pointer;
-    width: 100%;
-}
-
-.battle-button:hover {
-    background-color: #c82333;
-}
-
-.attribute-section {
-    margin-bottom: 15px;
-    padding: 8px;
-    background-color: white;
-    border-radius: 4px;
-    border: 1px solid #e9ecef;
-}
-</style>
-
-<script>
-function updateValue(key, value) {
-    // 通过Streamlit的session_state更新值
-    // 由于JavaScript无法直接访问Python的session_state，
-    // 我们需要通过其他方式处理
-    console.log('Updating', key, 'to', value);
-    // 这里可以通过Streamlit的组件通信或其他方式
-    window.location.reload();
-}
-
-function adjustValue(key, delta) {
-    // 通过Streamlit的session_state更新值
-    console.log('Adjusting', key, 'by', delta);
-    // 这里可以通过Streamlit的组件通信或其他方式
-    window.location.reload();
-}
-
-// 添加事件监听器来处理滑动条变化
-document.addEventListener('DOMContentLoaded', function() {
-    const sliders = document.querySelectorAll('.slider');
-    sliders.forEach(slider => {
-        slider.addEventListener('change', function() {
-            const key = this.getAttribute('data-key');
-            const value = this.value;
-            updateValue(key, value);
-        });
-    });
+@app.route('/api/game/new', methods=['POST'])
+def new_game():
+    """创建新游戏"""
+    game = Game()
+    game_id = str(id(game))
+    games[game_id] = game
     
-    const buttons = document.querySelectorAll('.slider-minus, .slider-plus');
-    buttons.forEach(button => {
-        button.addEventListener('click', function(e) {
-            e.preventDefault();
-            const key = this.getAttribute('data-key');
-            const delta = this.classList.contains('slider-minus') ? -1 : 1;
-            adjustValue(key, delta);
-        });
-    });
-});
-</script>
-""", unsafe_allow_html=True)
+    state = game.get_game_state()
+    enemy_values = game.get_enemy_values()
+    
+    return jsonify({
+        'game_id': game_id,
+        'hand': [card_to_dict(card) for card in state['hand']],
+        'enemies': [card_to_dict(card) for card in state['enemies']],
+        'enemy_values': enemy_values,
+        'kings_defeated': state['kings_defeated'],
+        'is_game_over': state['is_game_over'],
+        'is_victory': state['is_victory'],
+        'deck_size': state['deck_size']
+    })
 
-class Character:
-    def __init__(self, name, attack, defense, hp):
-        self.name = name
-        self.attack = attack
-        self.defense = defense
-        self.hp = hp
-        self.max_hp = hp
-        self.power = 0.35 * attack + 0.28 * defense + 0.14 * hp
-        self.alive = True
+@app.route('/api/game/<game_id>/state', methods=['GET'])
+def get_game_state(game_id):
+    """获取游戏状态"""
+    if game_id not in games:
+        return jsonify({'error': '游戏不存在'}), 404
     
-    def take_damage(self, damage):
-        self.hp = max(0, self.hp - damage)
-        if self.hp <= 0:
-            self.alive = False
+    game = games[game_id]
+    state = game.get_game_state()
+    enemy_values = game.get_enemy_values()
     
-    def heal(self):
-        self.hp = self.max_hp
-        self.alive = True
+    return jsonify({
+        'hand': [card_to_dict(card) for card in state['hand']],
+        'enemies': [card_to_dict(card) for card in state['enemies']],
+        'enemy_values': enemy_values,
+        'kings_defeated': state['kings_defeated'],
+        'is_game_over': state['is_game_over'],
+        'is_victory': state['is_victory'],
+        'deck_size': state['deck_size']
+    })
 
-class BattleSimulator:
-    def __init__(self, attackers, defenders):
-        self.attackers = attackers
-        self.defenders = defenders
-        self.battle_log = []
+@app.route('/api/game/<game_id>/check-enemy', methods=['POST'])
+def check_enemy(game_id):
+    """检查是否能击败敌人"""
+    if game_id not in games:
+        return jsonify({'error': '游戏不存在'}), 404
     
-    def calculate_damage(self, attacker, defender):
-        base_damage = max(1, attacker.attack * 0.11 - defender.defense * 0.1)
-        bonus_damage = 70 * attacker.attack / defender.defense
-        return base_damage + bonus_damage
+    data = request.get_json()
+    enemy_index = data.get('enemy_index')
     
-    def get_alive_characters(self, team):
-        return [char for char in team if char.alive]
+    if enemy_index is None:
+        return jsonify({'error': '缺少enemy_index参数'}), 400
     
-    def simulate_battle(self):
-        # 重置所有角色状态
-        for char in self.attackers + self.defenders:
-            char.heal()
+    game = games[game_id]
+    solution = game.can_defeat_enemy(enemy_index)
+    
+    if solution:
+        enemy = game.enemies[enemy_index]
+        enemy_value = enemy.get_numeric_value(game.enemies)
+        return jsonify({
+            'can_defeat': True,
+            'expression': solution[0],
+            'result': solution[1],
+            'target_value': enemy_value
+        })
+    else:
+        return jsonify({
+            'can_defeat': False
+        })
+
+@app.route('/api/game/<game_id>/defeat-enemy', methods=['POST'])
+def defeat_enemy(game_id):
+    """击败敌人"""
+    if game_id not in games:
+        return jsonify({'error': '游戏不存在'}), 404
+    
+    data = request.get_json()
+    enemy_index = data.get('enemy_index')
+    skip_validation = data.get('skip_validation', False)  # 手动输入时跳过自动验证
+    
+    if enemy_index is None:
+        return jsonify({'error': '缺少enemy_index参数'}), 400
+    
+    game = games[game_id]
+    
+    # 如果跳过验证，需要先验证手动输入的算式
+    if skip_validation:
+        expression = data.get('expression')
+        if not expression:
+            return jsonify({'error': '手动输入时需要提供算式'}), 400
         
-        self.battle_log = []
-        round_num = 1
-        
-        while True:
-            alive_attackers = self.get_alive_characters(self.attackers)
-            alive_defenders = self.get_alive_characters(self.defenders)
+        # 验证算式
+        try:
+            result = eval(expression)
+            enemy = game.enemies[enemy_index]
+            target_value = enemy.get_numeric_value(game.enemies)
             
-            # 检查胜负条件
-            if not alive_defenders:
-                self.battle_log.append(f"第{round_num}回合: 进攻方获胜！")
-                return "attackers"
-            if not alive_attackers:
-                self.battle_log.append(f"第{round_num}回合: 防守方获胜！")
-                return "defenders"
-            
-            # 进攻方先攻击
-            if alive_attackers:
-                attacker = random.choice(alive_attackers)
-                target = random.choice(alive_defenders)
-                damage = self.calculate_damage(attacker, target)
-                target.take_damage(damage)
-                status = "阵亡" if not target.alive else f"剩余生命值: {target.hp:.1f}"
-                self.battle_log.append(f"第{round_num}回合: {attacker.name} 攻击 {target.name}，造成 {damage:.1f} 伤害，{target.name} {status}")
-            
-            # 检查防守方是否全部阵亡
-            alive_defenders = self.get_alive_characters(self.defenders)
-            if not alive_defenders:
-                self.battle_log.append(f"第{round_num}回合: 进攻方获胜！")
-                return "attackers"
-            
-            # 防守方反击
-            if alive_defenders:
-                attacker = random.choice(alive_defenders)
-                target = random.choice(alive_attackers)
-                damage = self.calculate_damage(attacker, target)
-                target.take_damage(damage)
-                status = "阵亡" if not target.alive else f"剩余生命值: {target.hp:.1f}"
-                self.battle_log.append(f"第{round_num}回合: {attacker.name} 反击 {target.name}，造成 {damage:.1f} 伤害，{target.name} {status}")
-            
-            round_num += 1
-            
-            # 防止无限循环
-            if round_num > 1000:
-                self.battle_log.append("战斗超时，判定为平局")
-                return "draw"
+            if abs(result - target_value) > 0.0001:
+                return jsonify({'error': '算式计算结果不正确'}), 400
+        except:
+            return jsonify({'error': '算式无效'}), 400
+    
+    success = game.defeat_enemy(enemy_index, skip_validation=skip_validation)
+    
+    if not success:
+        return jsonify({'error': '无法击败该敌人'}), 400
+    
+    state = game.get_game_state()
+    enemy_values = game.get_enemy_values()
+    
+    return jsonify({
+        'success': True,
+        'hand': [card_to_dict(card) for card in state['hand']],
+        'enemies': [card_to_dict(card) for card in state['enemies']],
+        'enemy_values': enemy_values,
+        'kings_defeated': state['kings_defeated'],
+        'is_game_over': state['is_game_over'],
+        'is_victory': state['is_victory'],
+        'deck_size': state['deck_size']
+    })
 
-def main():
-    st.title("战斗模拟器")
+@app.route('/api/game/<game_id>/hand-values', methods=['GET'])
+def get_hand_values(game_id):
+    """获取手牌的实际点数"""
+    if game_id not in games:
+        return jsonify({'error': '游戏不存在'}), 404
     
-    # 初始化session_state
-    if 'attacker_count' not in st.session_state:
-        st.session_state.attacker_count = 3
-    if 'defender_count' not in st.session_state:
-        st.session_state.defender_count = 3
+    game = games[game_id]
+    hand_values = []
     
-    # 初始化角色属性
-    for i in range(5):
-        for side in ['attacker', 'defender']:
-            if f'{side}_attack_{i}' not in st.session_state:
-                st.session_state[f'{side}_attack_{i}'] = 159
-            if f'{side}_defense_{i}' not in st.session_state:
-                st.session_state[f'{side}_defense_{i}'] = 215
-            if f'{side}_hp_{i}' not in st.session_state:
-                st.session_state[f'{side}_hp_{i}'] = 423
+    for card in game.hand:
+        numeric_value = card.get_numeric_value(game.hand)
+        hand_values.append({
+            'card': card_to_dict(card),
+            'numeric_value': numeric_value
+        })
     
-    # 角色数量控制函数
-    def add_attacker():
-        if st.session_state.attacker_count < 5:
-            st.session_state.attacker_count += 1
-    
-    def remove_attacker():
-        if st.session_state.attacker_count > 1:
-            st.session_state.attacker_count -= 1
-    
-    def add_defender():
-        if st.session_state.defender_count < 5:
-            st.session_state.defender_count += 1
-    
-    def remove_defender():
-        if st.session_state.defender_count > 1:
-            st.session_state.defender_count -= 1
-    
-    # 滑动条回调函数
-    def update_attack_slider():
-        for i in range(5):
-            if f'attacker_attack_slider_{i}' in st.session_state:
-                st.session_state[f'attacker_attack_{i}'] = st.session_state[f'attacker_attack_slider_{i}']
-    
-    def update_defense_slider():
-        for i in range(5):
-            if f'attacker_defense_slider_{i}' in st.session_state:
-                st.session_state[f'attacker_defense_{i}'] = st.session_state[f'attacker_defense_slider_{i}']
-    
-    def update_hp_slider():
-        for i in range(5):
-            if f'attacker_hp_slider_{i}' in st.session_state:
-                st.session_state[f'attacker_hp_{i}'] = st.session_state[f'attacker_hp_slider_{i}']
-    
-    def update_defender_attack_slider():
-        for i in range(5):
-            if f'defender_attack_slider_{i}' in st.session_state:
-                st.session_state[f'defender_attack_{i}'] = st.session_state[f'defender_attack_slider_{i}']
-    
-    def update_defender_defense_slider():
-        for i in range(5):
-            if f'defender_defense_slider_{i}' in st.session_state:
-                st.session_state[f'defender_defense_{i}'] = st.session_state[f'defender_defense_slider_{i}']
-    
-    def update_defender_hp_slider():
-        for i in range(5):
-            if f'defender_hp_slider_{i}' in st.session_state:
-                st.session_state[f'defender_hp_{i}'] = st.session_state[f'defender_hp_slider_{i}']
-    
-    # 主界面布局 - 使用更宽的布局
-    col1, col2 = st.columns([5, 1])
-    
-    with col1:
-        # 进攻方
-        st.markdown('<div class="section-header"><h2>进攻方</h2></div>', unsafe_allow_html=True)
-        
-        # 创建角色卡片 - 使用最简单的Streamlit组件
-        cols = st.columns(5)
-        for i in range(5):
-            with cols[i]:
-                if i < st.session_state.attacker_count:
-                    # 使用最简单的Streamlit组件
-                    st.markdown(f'<div class="character-card"><h3>角色{i+1}</h3>', unsafe_allow_html=True)
-                    
-                    # 攻击
-                    attack = st.session_state[f'attacker_attack_{i}']
-                    st.markdown(f'<div class="attribute-row"><span class="attribute-label">攻击</span><span class="attribute-value">{attack}</span></div>', unsafe_allow_html=True)
-                    
-                    # 攻击控制
-                    col1, col2, col3 = st.columns([1, 4, 1])
-                    with col1:
-                        if st.button("-", key=f"attacker_attack_minus_{i}"):
-                            st.session_state[f'attacker_attack_{i}'] = max(100, st.session_state[f'attacker_attack_{i}'] - 1)
-                            st.rerun()
-                    with col2:
-                        st.slider("", 100, 2000, attack, key=f"attacker_attack_slider_{i}", on_change=update_attack_slider)
-                    with col3:
-                        if st.button("+", key=f"attacker_attack_plus_{i}"):
-                            st.session_state[f'attacker_attack_{i}'] = min(2000, st.session_state[f'attacker_attack_{i}'] + 1)
-                            st.rerun()
-                    
-                    # 防御
-                    defense = st.session_state[f'attacker_defense_{i}']
-                    st.markdown(f'<div class="attribute-row"><span class="attribute-label">防御</span><span class="attribute-value">{defense}</span></div>', unsafe_allow_html=True)
-                    
-                    # 防御控制
-                    col1, col2, col3 = st.columns([1, 4, 1])
-                    with col1:
-                        if st.button("-", key=f"attacker_defense_minus_{i}"):
-                            st.session_state[f'attacker_defense_{i}'] = max(100, st.session_state[f'attacker_defense_{i}'] - 1)
-                            st.rerun()
-                    with col2:
-                        st.slider("", 100, 2000, defense, key=f"attacker_defense_slider_{i}", on_change=update_defense_slider)
-                    with col3:
-                        if st.button("+", key=f"attacker_defense_plus_{i}"):
-                            st.session_state[f'attacker_defense_{i}'] = min(2000, st.session_state[f'attacker_defense_{i}'] + 1)
-                            st.rerun()
-                    
-                    # 生命
-                    hp = st.session_state[f'attacker_hp_{i}']
-                    st.markdown(f'<div class="attribute-row"><span class="attribute-label">生命</span><span class="attribute-value">{hp}</span></div>', unsafe_allow_html=True)
-                    
-                    # 生命控制
-                    col1, col2, col3 = st.columns([1, 4, 1])
-                    with col1:
-                        if st.button("-", key=f"attacker_hp_minus_{i}"):
-                            st.session_state[f'attacker_hp_{i}'] = max(100, st.session_state[f'attacker_hp_{i}'] - 1)
-                            st.rerun()
-                    with col2:
-                        st.slider("", 100, 6000, hp, key=f"attacker_hp_slider_{i}", on_change=update_hp_slider)
-                    with col3:
-                        if st.button("+", key=f"attacker_hp_plus_{i}"):
-                            st.session_state[f'attacker_hp_{i}'] = min(6000, st.session_state[f'attacker_hp_{i}'] + 1)
-                            st.rerun()
-                    
-                    # 计算战力
-                    power = 0.35 * attack + 0.28 * defense + 0.14 * hp
-                    st.markdown(f'<div class="power-display">战力: {power:.1f}</div></div>', unsafe_allow_html=True)
-                    
-                    # 添加删除按钮（除了第一个角色）
-                    if i > 0:
-                        if st.button("✕", key=f"remove_attacker_{i}", help="删除此角色"):
-                            remove_attacker()
-                            st.rerun()
-                else:
-                    # 空槽位 - 点击添加角色
-                    if st.button("+", key=f"add_attacker_slot_{i}", help="添加角色"):
-                        add_attacker()
-                        st.rerun()
-        
-        # 防守方
-        st.markdown('<div class="section-header"><h2>防守方</h2></div>', unsafe_allow_html=True)
-        
-        # 创建角色卡片 - 使用最简单的Streamlit组件
-        cols = st.columns(5)
-        for i in range(5):
-            with cols[i]:
-                if i < st.session_state.defender_count:
-                    # 使用最简单的Streamlit组件
-                    st.markdown(f'<div class="character-card"><h3>角色{i+1}</h3>', unsafe_allow_html=True)
-                    
-                    # 攻击
-                    attack = st.session_state[f'defender_attack_{i}']
-                    st.markdown(f'<div class="attribute-row"><span class="attribute-label">攻击</span><span class="attribute-value">{attack}</span></div>', unsafe_allow_html=True)
-                    
-                    # 攻击控制
-                    col1, col2, col3 = st.columns([1, 4, 1])
-                    with col1:
-                        if st.button("-", key=f"defender_attack_minus_{i}"):
-                            st.session_state[f'defender_attack_{i}'] = max(100, st.session_state[f'defender_attack_{i}'] - 1)
-                            st.rerun()
-                    with col2:
-                        st.slider("", 100, 2000, attack, key=f"defender_attack_slider_{i}", on_change=update_defender_attack_slider)
-                    with col3:
-                        if st.button("+", key=f"defender_attack_plus_{i}"):
-                            st.session_state[f'defender_attack_{i}'] = min(2000, st.session_state[f'defender_attack_{i}'] + 1)
-                            st.rerun()
-                    
-                    # 防御
-                    defense = st.session_state[f'defender_defense_{i}']
-                    st.markdown(f'<div class="attribute-row"><span class="attribute-label">防御</span><span class="attribute-value">{defense}</span></div>', unsafe_allow_html=True)
-                    
-                    # 防御控制
-                    col1, col2, col3 = st.columns([1, 4, 1])
-                    with col1:
-                        if st.button("-", key=f"defender_defense_minus_{i}"):
-                            st.session_state[f'defender_defense_{i}'] = max(100, st.session_state[f'defender_defense_{i}'] - 1)
-                            st.rerun()
-                    with col2:
-                        st.slider("", 100, 2000, defense, key=f"defender_defense_slider_{i}", on_change=update_defender_defense_slider)
-                    with col3:
-                        if st.button("+", key=f"defender_defense_plus_{i}"):
-                            st.session_state[f'defender_defense_{i}'] = min(2000, st.session_state[f'defender_defense_{i}'] + 1)
-                            st.rerun()
-                    
-                    # 生命
-                    hp = st.session_state[f'defender_hp_{i}']
-                    st.markdown(f'<div class="attribute-row"><span class="attribute-label">生命</span><span class="attribute-value">{hp}</span></div>', unsafe_allow_html=True)
-                    
-                    # 生命控制
-                    col1, col2, col3 = st.columns([1, 4, 1])
-                    with col1:
-                        if st.button("-", key=f"defender_hp_minus_{i}"):
-                            st.session_state[f'defender_hp_{i}'] = max(100, st.session_state[f'defender_hp_{i}'] - 1)
-                            st.rerun()
-                    with col2:
-                        st.slider("", 100, 6000, hp, key=f"defender_hp_slider_{i}", on_change=update_defender_hp_slider)
-                    with col3:
-                        if st.button("+", key=f"defender_hp_plus_{i}"):
-                            st.session_state[f'defender_hp_{i}'] = min(6000, st.session_state[f'defender_hp_{i}'] + 1)
-                            st.rerun()
-                    
-                    # 计算战力
-                    power = 0.35 * attack + 0.28 * defense + 0.14 * hp
-                    st.markdown(f'<div class="power-display">战力: {power:.1f}</div></div>', unsafe_allow_html=True)
-                    
-                    # 添加删除按钮（除了第一个角色）
-                    if i > 0:
-                        if st.button("✕", key=f"remove_defender_{i}", help="删除此角色"):
-                            remove_defender()
-                            st.rerun()
-                else:
-                    # 空槽位 - 点击添加角色
-                    if st.button("+", key=f"add_defender_slot_{i}", help="添加角色"):
-                        add_defender()
-                        st.rerun()
-    
-    with col2:
-        st.markdown('<div class="control-panel">', unsafe_allow_html=True)
-        
-        st.markdown('<h3>模拟次数</h3>', unsafe_allow_html=True)
-        simulation_count = st.number_input("", 1, 10000, 1000, key="simulation_count")
-        
-        st.markdown('<h3>模拟战斗</h3>', unsafe_allow_html=True)
-        if st.button("模拟战斗", type="primary", key="start_battle"):
-            st.session_state.start_battle = True
-        
-        st.markdown('</div>', unsafe_allow_html=True)
-    
-    # 创建角色对象用于战斗
-    attackers = []
-    for i in range(st.session_state.attacker_count):
-        attack = st.session_state[f'attacker_attack_{i}']
-        defense = st.session_state[f'attacker_defense_{i}']
-        hp = st.session_state[f'attacker_hp_{i}']
-        char = Character(f"进攻方角色{i+1}", attack, defense, hp)
-        attackers.append(char)
-    
-    defenders = []
-    for i in range(st.session_state.defender_count):
-        attack = st.session_state[f'defender_attack_{i}']
-        defense = st.session_state[f'defender_defense_{i}']
-        hp = st.session_state[f'defender_hp_{i}']
-        char = Character(f"防守方角色{i+1}", attack, defense, hp)
-        defenders.append(char)
-    
-    # 显示总战力
-    attacker_total_power = sum(char.power for char in attackers)
-    defender_total_power = sum(char.power for char in defenders)
-    
-    st.markdown('<div class="section-header"><h2>战力对比</h2></div>', unsafe_allow_html=True)
-    col1, col2 = st.columns(2)
-    with col1:
-        st.metric("进攻方总战力", f"{attacker_total_power:.1f}")
-    with col2:
-        st.metric("防守方总战力", f"{defender_total_power:.1f}")
-    
-    # 战斗结果
-    if st.session_state.get('start_battle', False):
-        st.markdown('<div class="section-header"><h2>战斗结果</h2></div>', unsafe_allow_html=True)
-        
-        # 进度条
-        progress_bar = st.progress(0)
-        status_text = st.empty()
-        
-        attacker_wins = 0
-        defender_wins = 0
-        draws = 0
-        
-        for i in range(simulation_count):
-            # 更新进度
-            progress = (i + 1) / simulation_count
-            progress_bar.progress(progress)
-            status_text.text(f"模拟进度: {i+1}/{simulation_count}")
-            
-            # 重置随机数种子，确保每次模拟都是独立的
-            random.seed(time.time() + i)
-            
-            # 创建新的模拟器实例
-            simulator = BattleSimulator(attackers.copy(), defenders.copy())
-            result = simulator.simulate_battle()
-            
-            if result == "attackers":
-                attacker_wins += 1
-            elif result == "defenders":
-                defender_wins += 1
-            else:
-                draws += 1
-        
-        # 显示结果
-        st.success("模拟完成！")
-        
-        col1, col2, col3 = st.columns(3)
-        with col1:
-            st.metric("进攻方胜率", f"{attacker_wins/simulation_count*100:.1f}%", f"{attacker_wins}胜")
-        with col2:
-            st.metric("防守方胜率", f"{defender_wins/simulation_count*100:.1f}%", f"{defender_wins}胜")
-        with col3:
-            st.metric("平局率", f"{draws/simulation_count*100:.1f}%", f"{draws}平")
-        
-        # 显示详细统计
-        st.subheader("详细统计")
-        st.write(f"总模拟次数: {simulation_count}")
-        st.write(f"进攻方胜利: {attacker_wins} 次 ({attacker_wins/simulation_count*100:.1f}%)")
-        st.write(f"防守方胜利: {defender_wins} 次 ({defender_wins/simulation_count*100:.1f}%)")
-        st.write(f"平局: {draws} 次 ({draws/simulation_count*100:.1f}%)")
-        
-        # 重置状态
-        st.session_state.start_battle = False
+    return jsonify({'hand_values': hand_values})
 
-if __name__ == "__main__":
-    main() 
+@app.route('/api/game/<game_id>/validate-expression', methods=['POST'])
+def validate_expression(game_id):
+    """验证用户输入的算式"""
+    if game_id not in games:
+        return jsonify({'error': '游戏不存在'}), 404
+    
+    data = request.get_json()
+    enemy_index = data.get('enemy_index')
+    expression = data.get('expression')
+    
+    if enemy_index is None or expression is None:
+        return jsonify({'error': '缺少参数'}), 400
+    
+    game = games[game_id]
+    
+    if enemy_index < 0 or enemy_index >= len(game.enemies):
+        return jsonify({'error': '无效的敌人索引'}), 400
+    
+    enemy = game.enemies[enemy_index]
+    target_value = enemy.get_numeric_value(game.enemies)
+    
+    # 获取手牌的点数
+    hand_values = {}
+    for card in game.hand:
+        numeric_value = card.get_numeric_value(game.hand)
+        # 使用卡片作为key，存储点数
+        card_key = f"{card.suit.value}_{card.value}_{card.is_big_joker}"
+        hand_values[card_key] = numeric_value
+        # 也存储数值本身，用于查找
+        if numeric_value not in hand_values:
+            hand_values[numeric_value] = []
+        if not isinstance(hand_values[numeric_value], list):
+            hand_values[numeric_value] = []
+        hand_values[numeric_value].append(card_key)
+    
+    # 解析并验证算式
+    try:
+        # 安全地计算表达式
+        result = eval(expression)
+        
+        # 检查结果是否等于目标值
+        if abs(result - target_value) > 0.0001:
+            return jsonify({
+                'valid': False,
+                'error': f'计算结果 {result} 不等于目标点数 {target_value}'
+            })
+        
+        # 提取表达式中使用的数字
+        import re
+        # 匹配数字（包括小数）
+        numbers_in_expr = re.findall(r'\d+\.?\d*', expression)
+        used_values = [float(n) for n in numbers_in_expr]
+        
+        # 获取必须使用的牌（除黑桃K外的所有牌）
+        required_cards = [c for c in game.hand if not c.is_spade_king()]
+        required_values = [c.get_numeric_value(game.hand) for c in required_cards]
+        
+        # 检查是否所有必须的牌都被使用
+        used_values_copy = used_values.copy()
+        missing_cards = []
+        for req_val in required_values:
+            found = False
+            for i, used_val in enumerate(used_values_copy):
+                if abs(used_val - req_val) < 0.0001:
+                    used_values_copy.pop(i)
+                    found = True
+                    break
+            if not found:
+                missing_cards.append(req_val)
+        
+        if missing_cards:
+            return jsonify({
+                'valid': False,
+                'error': f'未使用所有必须的手牌（缺少点数: {missing_cards}）'
+            })
+        
+        # 检查使用的数字是否都在手牌中
+        # 允许使用黑桃K的点数（13），但不强制
+        spade_king_value = game.spade_king.get_numeric_value(game.hand) if game.spade_king else None
+        
+        invalid_values = []
+        for used_val in used_values:
+            # 检查是否在手牌的点数中
+            valid = False
+            for card in game.hand:
+                card_val = card.get_numeric_value(game.hand)
+                if abs(card_val - used_val) < 0.0001:
+                    valid = True
+                    break
+            if not valid:
+                invalid_values.append(used_val)
+        
+        if invalid_values:
+            return jsonify({
+                'valid': False,
+                'error': f'使用了不在手牌中的点数: {invalid_values}'
+            })
+        
+        return jsonify({
+            'valid': True,
+            'result': result,
+            'target_value': target_value
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'valid': False,
+            'error': f'算式无效: {str(e)}'
+        })
+
+@app.route('/api/game/<game_id>/discard', methods=['POST'])
+def discard_card(game_id):
+    """丢弃手牌"""
+    if game_id not in games:
+        return jsonify({'error': '游戏不存在'}), 404
+    
+    data = request.get_json()
+    card_index = data.get('card_index')
+    
+    if card_index is None:
+        return jsonify({'error': '缺少card_index参数'}), 400
+    
+    game = games[game_id]
+    success = game.discard_card(card_index)
+    
+    if not success:
+        return jsonify({'error': '无法丢弃该牌'}), 400
+    
+    state = game.get_game_state()
+    enemy_values = game.get_enemy_values()
+    
+    return jsonify({
+        'success': True,
+        'hand': [card_to_dict(card) for card in state['hand']],
+        'enemies': [card_to_dict(card) for card in state['enemies']],
+        'enemy_values': enemy_values,
+        'kings_defeated': state['kings_defeated'],
+        'is_game_over': state['is_game_over'],
+        'is_victory': state['is_victory'],
+        'deck_size': state['deck_size']
+    })
+
+if __name__ == '__main__':
+    import os
+    # 生产环境从环境变量读取配置，开发环境使用默认值
+    debug = os.environ.get('FLASK_DEBUG', 'False').lower() == 'true'
+    host = os.environ.get('HOST', '0.0.0.0')
+    port = int(os.environ.get('PORT', 5000))
+    app.run(debug=debug, host=host, port=port)
+

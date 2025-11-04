@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>失心王 - 游戏</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>《失心王》</h1>
+            <p class="subtitle">黑化的国王打算杀死另外3位国王。扮演黑桃K，消灭另外三个K以获胜。</p>
+        </header>
+
+        <div class="game-info">
+            <div class="info-item">
+                <span>已击败K:</span>
+                <span id="kings-defeated">0</span>/3
+            </div>
+            <div class="info-item">
+                <span>牌堆剩余:</span>
+                <span id="deck-size">0</span>张
+            </div>
+        </div>
+
+        <div class="game-area">
+            <!-- 敌人区域 -->
+            <div class="enemies-section">
+                <h2>敌人牌</h2>
+                <div class="enemies-container" id="enemies-container">
+                    <!-- 敌人牌将通过JavaScript动态生成 -->
+                </div>
+            </div>
+
+            <!-- 手牌区域 -->
+            <div class="hand-section">
+                <h2>你的手牌</h2>
+                <div class="hand-container" id="hand-container">
+                    <!-- 手牌将通过JavaScript动态生成 -->
+                </div>
+            </div>
+        </div>
+
+        <!-- 攻击选择区域 -->
+        <div class="attack-choice-section" id="attack-choice-section" style="display: none;">
+            <h3>选择攻击方式</h3>
+            <p>目标敌人点数: <span id="choice-target-value"></span></p>
+            <div class="attack-buttons">
+                <button id="auto-calculate-btn" class="btn btn-primary">自动计算</button>
+                <button id="manual-input-btn" class="btn btn-primary">手动输入算式</button>
+                <button id="cancel-choice-btn" class="btn btn-secondary">取消</button>
+            </div>
+        </div>
+
+        <!-- 解决方案显示 -->
+        <div class="solution-section" id="solution-section" style="display: none;">
+            <h3>解决方案</h3>
+            <div class="solution-content">
+                <p>目标点数: <span id="target-value"></span></p>
+                <p>表达式: <span id="expression"></span></p>
+                <p>计算结果: <span id="result"></span></p>
+            </div>
+            <button id="confirm-attack-btn" class="btn btn-primary">确认攻击</button>
+            <button id="cancel-attack-btn" class="btn btn-secondary">取消</button>
+        </div>
+
+        <!-- 手动输入算式区域 -->
+        <div class="manual-input-section" id="manual-input-section" style="display: none;">
+            <h3>手动输入算式</h3>
+            <div class="manual-input-content">
+                <p>目标点数: <span id="manual-target-value"></span></p>
+                <div class="hand-values-hint">
+                    <p><strong>你的手牌点数：</strong></p>
+                    <div id="hand-values-display"></div>
+                    <p class="hint-text">（黑桃K的点数为13，可用可不用；其他牌的点数必须全部使用）</p>
+                </div>
+                <div class="input-group">
+                    <label for="expression-input">输入算式（使用 +、-、*、/ 和括号）：</label>
+                    <input type="text" id="expression-input" placeholder="例如: (5 + 3) * 2" />
+                    <p class="input-hint">示例: (11 + 5) * 2, 13 - 5 + 3, (12 + 4) / 2</p>
+                </div>
+                <div id="manual-validation-result"></div>
+            </div>
+            <div class="manual-input-buttons">
+                <button id="validate-expression-btn" class="btn btn-primary">验证算式</button>
+                <button id="confirm-manual-attack-btn" class="btn btn-success" style="display: none;">确认攻击</button>
+                <button id="cancel-manual-btn" class="btn btn-secondary">取消</button>
+            </div>
+        </div>
+
+        <!-- 丢弃手牌区域 -->
+        <div class="discard-section" id="discard-section" style="display: none;">
+            <h3>选择要丢弃的手牌</h3>
+            <p class="discard-hint">击败敌人后，你需要丢弃一张手牌（不能丢弃黑桃K）</p>
+            <div class="discard-container" id="discard-container">
+                <!-- 可丢弃的手牌将通过JavaScript动态生成 -->
+            </div>
+            <button id="cancel-discard-btn" class="btn btn-secondary">取消</button>
+        </div>
+
+        <!-- 操作按钮 -->
+        <div class="actions">
+            <button id="new-game-btn" class="btn btn-primary">新游戏</button>
+            <button id="refresh-btn" class="btn btn-secondary">刷新状态</button>
+        </div>
+
+        <!-- 消息提示 -->
+        <div class="message" id="message"></div>
+
+        <!-- 胜利/失败提示 -->
+        <div class="modal" id="game-over-modal" style="display: none;">
+            <div class="modal-content">
+                <h2 id="game-over-title"></h2>
+                <p id="game-over-message"></p>
+                <button id="restart-btn" class="btn btn-primary">重新开始</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>
+
