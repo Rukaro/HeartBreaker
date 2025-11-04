@@ -56,6 +56,9 @@ st.markdown("""
         border-radius: 10px;
         margin-bottom: 20px;
         border: 2px solid #ff6b6b;
+        display: block;
+        width: 100%;
+        box-sizing: border-box;
     }
     
     /* 手牌区域 */
@@ -65,6 +68,9 @@ st.markdown("""
         border-radius: 10px;
         margin-bottom: 20px;
         border: 2px solid #4dabf7;
+        display: block;
+        width: 100%;
+        box-sizing: border-box;
     }
     
     /* 卡片样式 - 固定比例，像真实卡牌 */
@@ -312,11 +318,13 @@ def display_game_state():
         return
     
     # 敌人牌区域
-    st.markdown('<div class="enemy-section">', unsafe_allow_html=True)
-    st.markdown('<h2 style="color: #ff6b6b; margin-bottom: 15px; padding-left: 10px; border-left: 4px solid #ff6b6b;">🃏 敌人牌</h2>', unsafe_allow_html=True)
-    enemy_cols = st.columns(4)
-    for i, (enemy, value) in enumerate(zip(state['enemies'], enemy_values)):
-        with enemy_cols[i]:
+    with st.container():
+        st.markdown('<div class="enemy-section">', unsafe_allow_html=True)
+        st.markdown('<h2 style="color: #ff6b6b; margin-bottom: 15px; padding-left: 10px; border-left: 4px solid #ff6b6b;">🃏 敌人牌</h2>', unsafe_allow_html=True)
+        
+        # 创建卡片HTML
+        enemy_cards_html = []
+        for i, (enemy, value) in enumerate(zip(state['enemies'], enemy_values)):
             is_king = enemy.is_king()
             card_text = card_display(enemy)
             if is_king:
@@ -324,26 +332,37 @@ def display_game_state():
             
             card_class = get_card_css_class(enemy)
             card_html = f'''
-            <div class="{card_class}">
-                <div class="card-value">{card_text}</div>
-                <div class="card-point">点数: {value}</div>
+            <div style="display: inline-block; margin: 10px; vertical-align: top;">
+                <div class="{card_class}">
+                    <div class="card-value">{card_text}</div>
+                    <div class="card-point">点数: {value}</div>
+                </div>
             </div>
             '''
-            st.markdown(card_html, unsafe_allow_html=True)
-            
-            if st.button("攻击敌人", key=f"attack_enemy_{i}", disabled=st.session_state.waiting_for_discard, use_container_width=True):
-                st.session_state.selected_enemy_index = i
-                st.rerun()
-    st.markdown('</div>', unsafe_allow_html=True)
+            enemy_cards_html.append(card_html)
+        
+        st.markdown(''.join(enemy_cards_html), unsafe_allow_html=True)
+        
+        # 按钮区域
+        enemy_cols = st.columns(4)
+        for i, (enemy, value) in enumerate(zip(state['enemies'], enemy_values)):
+            with enemy_cols[i]:
+                if st.button("攻击敌人", key=f"attack_enemy_{i}", disabled=st.session_state.waiting_for_discard, use_container_width=True):
+                    st.session_state.selected_enemy_index = i
+                    st.rerun()
+        
+        st.markdown('</div>', unsafe_allow_html=True)
     
     st.markdown("<br>", unsafe_allow_html=True)
     
     # 手牌区域
-    st.markdown('<div class="hand-section">', unsafe_allow_html=True)
-    st.markdown('<h2 style="color: #4dabf7; margin-bottom: 15px; padding-left: 10px; border-left: 4px solid #4dabf7;">👋 你的手牌</h2>', unsafe_allow_html=True)
-    hand_cols = st.columns(len(state['hand']))
-    for i, card in enumerate(state['hand']):
-        with hand_cols[i]:
+    with st.container():
+        st.markdown('<div class="hand-section">', unsafe_allow_html=True)
+        st.markdown('<h2 style="color: #4dabf7; margin-bottom: 15px; padding-left: 10px; border-left: 4px solid #4dabf7;">👋 你的手牌</h2>', unsafe_allow_html=True)
+        
+        # 创建卡片HTML
+        hand_cards_html = []
+        for i, card in enumerate(state['hand']):
             numeric_value = card.get_numeric_value(game.hand)
             is_spade_k = card.is_spade_king()
             card_text = card_display(card)
@@ -353,13 +372,17 @@ def display_game_state():
             
             card_class = get_card_css_class(card)
             card_html = f'''
-            <div class="{card_class}">
-                <div class="card-value">{card_text}</div>
-                <div class="card-point">点数: {numeric_value}</div>
+            <div style="display: inline-block; margin: 10px; vertical-align: top;">
+                <div class="{card_class}">
+                    <div class="card-value">{card_text}</div>
+                    <div class="card-point">点数: {numeric_value}</div>
+                </div>
             </div>
             '''
-            st.markdown(card_html, unsafe_allow_html=True)
-    st.markdown('</div>', unsafe_allow_html=True)
+            hand_cards_html.append(card_html)
+        
+        st.markdown(''.join(hand_cards_html), unsafe_allow_html=True)
+        st.markdown('</div>', unsafe_allow_html=True)
     
     # 处理攻击选择
     if st.session_state.selected_enemy_index is not None:
