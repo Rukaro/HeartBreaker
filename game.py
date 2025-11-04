@@ -19,7 +19,6 @@ class Game:
         self.kings_defeated = 0  # 已击败的K的数量
         self.is_game_over = False
         self.is_victory = False
-        self.defeated_enemy = None  # 刚击败的敌人（等待丢弃手牌后加入手牌）
         
         self._initialize_game()
     
@@ -99,7 +98,7 @@ class Game:
     
     def defeat_enemy(self, enemy_index: int, skip_validation: bool = False) -> bool:
         """
-        击败指定的敌人（第一步：移除敌人，等待丢弃手牌）
+        击败指定的敌人（立即将敌人加入手牌，然后需要丢弃手牌）
         
         Args:
             enemy_index: 敌人的索引
@@ -119,11 +118,12 @@ class Game:
         if enemy.is_king():
             self.kings_defeated += 1
         
-        # 移除敌人
-        self.defeated_enemy = self.enemies.pop(enemy_index)
+        # 移除敌人并立即加入手牌
+        defeated_enemy = self.enemies.pop(enemy_index)
+        self.hand.append(defeated_enemy)
         
-        # 注意：这里不刷新敌人牌，也不加入手牌
-        # 需要先丢弃一张手牌，然后在complete_defeat中完成后续操作
+        # 注意：不立即刷新敌人牌，需要先丢弃一张手牌
+        # 刷新敌人牌会在discard_card中完成
         
         # 检查胜利条件（如果击败了最后一个K）
         if self.kings_defeated >= 3:
@@ -132,23 +132,9 @@ class Game:
         
         return True
     
-    def complete_defeat(self):
-        """
-        完成击败流程（第二步：丢弃手牌后，将击败的敌人加入手牌并刷新敌人牌）
-        """
-        if self.defeated_enemy is None:
-            return
-        
-        # 将击败的敌人加入手牌
-        self.hand.append(self.defeated_enemy)
-        self.defeated_enemy = None
-        
-        # 刷新敌人牌
-        self._refresh_enemies()
-    
     def discard_card(self, card_index: int) -> bool:
         """
-        丢弃一张手牌
+        丢弃一张手牌（丢弃后刷新敌人牌）
         
         Args:
             card_index: 手牌的索引
@@ -168,9 +154,8 @@ class Game:
         # 丢弃牌
         self.hand.pop(card_index)
         
-        # 如果刚击败了敌人，完成击败流程
-        if self.defeated_enemy is not None:
-            self.complete_defeat()
+        # 刷新敌人牌（补充到4个敌人）
+        self._refresh_enemies()
         
         return True
     
